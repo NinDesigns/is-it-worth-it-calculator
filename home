@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Is It Worth It? Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+      background: #121212;
+      color: #e0e0e0;
+    }
+    .light-mode {
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      color: #4CAF50;
+    }
+    .calculator {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .light-mode .calculator {
+      background: #fff;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #444;
+      border-radius: 5px;
+      background: #333;
+      color: #fff;
+    }
+    .light-mode input, .light-mode select {
+      background: #fff;
+      color: #333;
+      border: 1px solid #ddd;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+    .toggle-container {
+      text-align: right;
+      margin-bottom: 10px;
+    }
+    .tax-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .tax-option {
+      margin: 10px 0;
+      text-align: left;
+    }
+    .tax-option label {
+      display: block;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="toggle-container">
+    <button onclick="toggleDarkMode()">🌓 Toggle Dark Mode</button>
+  </div>
+
+  <div class="calculator">
+    <h1>Is It Worth It? 💸</h1>
+    <p>Find out how much of your life this item costs.</p>
+    
+    <label for="wage">Your hourly wage ($):</label>
+    <input type="number" id="wage" placeholder="e.g., 15">
+    
+    <label for="price">Item price ($):</label>
+    <input type="number" id="price" placeholder="e.g., 60">
+
+    <div class="tax-option">
+      <label>Tax Options:</label>
+      <select id="taxType" onchange="updateTaxUI()">
+        <option value="none">No tax</option>
+        <option value="custom">Custom tax rate</option>
+        <option value="us">US State</option>
+        <option value="ca">Canada Province</option>
+      </select>
+    </div>
+
+    <div id="customTaxContainer" class="tax-option" style="display: none;">
+      <label for="customTax">Custom Tax Rate (%):</label>
+      <input type="number" id="customTax" placeholder="e.g., 15">
+    </div>
+
+    <div id="regionTaxContainer" class="tax-option" style="display: none;">
+      <label id="regionLabel">Select State/Province:</label>
+      <select id="regionTax">
+        <!-- Options will be filled by JavaScript -->
+      </select>
+    </div>
+    
+    <button onclick="calculate()">Calculate</button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    // Tax data for US states and Canadian provinces (average combined tax rates)
+    const taxRates = {
+      us: {
+        "Alabama": 9.24,
+        "Alaska": 1.76,
+        "Arizona": 8.40,
+        "Arkansas": 9.51,
+        "California": 8.82,
+        "Colorado": 7.72,
+        "Connecticut": 6.35,
+        "Delaware": 0.00,
+        "Florida": 7.05,
+        "Georgia": 7.35,
+        "Hawaii": 4.44,
+        "Idaho": 6.03,
+        "Illinois": 8.81,
+        "Indiana": 7.00,
+        "Iowa": 6.94,
+        "Kansas": 8.70,
+        "Kentucky": 6.00,
+        "Louisiana": 9.55,
+        "Maine": 5.50,
+        "Maryland": 6.00,
+        "Massachusetts": 6.25,
+        "Michigan": 6.00,
+        "Minnesota": 7.49,
+        "Mississippi": 7.07,
+        "Missouri": 8.25,
+        "Montana": 0.00,
+        "Nebraska": 6.94,
+        "Nevada": 8.23,
+        "New Hampshire": 0.00,
+        "New Jersey": 6.60,
+        "New Mexico": 7.83,
+        "New York": 8.52,
+        "North Carolina": 6.98,
+        "North Dakota": 6.96,
+        "Ohio": 7.23,
+        "Oklahoma": 8.95,
+        "Oregon": 0.00,
+        "Pennsylvania": 6.34,
+        "Rhode Island": 7.00,
+        "South Carolina": 7.46,
+        "South Dakota": 6.40,
+        "Tennessee": 9.55,
+        "Texas": 8.19,
+        "Utah": 7.19,
+        "Vermont": 6.24,
+        "Virginia": 5.65,
+        "Washington": 9.29,
+        "West Virginia": 6.50,
+        "Wisconsin": 5.43,
+        "Wyoming": 5.34
+      },
+      ca: {
+        "Alberta": 5.00,
+        "British Columbia": 12.00,
+        "Manitoba": 12.00,
+        "New Brunswick": 15.00,
+        "Newfoundland and Labrador": 15.00,
+        "Northwest Territories": 5.00,
+        "Nova Scotia": 15.00,
+        "Nunavut": 5.00,
+        "Ontario": 13.00,
+        "Prince Edward Island": 15.00,
+        "Quebec": 14.975,
+        "Saskatchewan": 11.00,
+        "Yukon": 5.00
+      }
+    };
+
+    // Dark mode toggle
+    function toggleDarkMode() {
+      document.body.classList.toggle('light-mode');
+    }
+
+    // Update UI based on tax type selection
+    function updateTaxUI() {
+      const taxType = document.getElementById('taxType').value;
+      const customTaxContainer = document.getElementById('customTaxContainer');
+      const regionTaxContainer = document.getElementById('regionTaxContainer');
+      const regionLabel = document.getElementById('regionLabel');
+      const regionTaxSelect = document.getElementById('regionTax');
+
+      // Hide all first
+      customTaxContainer.style.display = 'none';
+      regionTaxContainer.style.display = 'none';
+
+      // Show relevant section
+      if (taxType === 'custom') {
+        customTaxContainer.style.display = 'block';
+      } else if (taxType === 'us' || taxType === 'ca') {
+        regionTaxContainer.style.display = 'block';
+        regionLabel.textContent = taxType === 'us' ? 'Select US State:' : 'Select Canadian Province:';
+        
+        // Populate dropdown
+        regionTaxSelect.innerHTML = '';
+        const regions = taxRates[taxType];
+        for (const region in regions) {
+          const option = document.createElement('option');
+          option.value = region;
+          option.textContent = `${region} (${regions[region]}%)`;
+          regionTaxSelect.appendChild(option);
+        }
+      }
+    }
+
+    // Main calculation
+    function calculate() {
+      const wage = parseFloat(document.getElementById('wage').value);
+      const price = parseFloat(document.getElementById('price').value);
+      const taxType = document.getElementById('taxType').value;
+      
+      if (!wage || !price) {
+        alert("Please fill in both fields!");
+        return;
+      }
+
+      let taxRate = 0;
+      switch (taxType) {
+        case 'custom':
+          taxRate = parseFloat(document.getElementById('customTax').value) || 0;
+          break;
+        case 'us':
+        case 'ca':
+          const selectedRegion = document.getElementById('regionTax').value;
+          taxRate = taxRates[taxType][selectedRegion] || 0;
+          break;
+      }
+
+      const adjustedPrice = price * (1 + (taxRate / 100));
+      const hours = (adjustedPrice / wage).toFixed(1);
+      const days = (hours / 8).toFixed(1);
+      
+      let resultText = `You need to work <span style="color: #4CAF50;">${hours} hours</span> (≈ ${days} days) `;
+      resultText += `to afford this${taxRate > 0 ? ` <i>(after ${taxRate}% tax)</i>` : ''}.`;
+      
+      document.getElementById('result').innerHTML = resultText;
+    }
+
+    // Initialize
+    updateTaxUI();
+  </script>
+</body>
+</html>
